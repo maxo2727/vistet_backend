@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.urls import reverse
+from django.utils.html import format_html
+from django.http import HttpResponse
 from .models import User, Store, Clothe, Outfit, Comment
 
 """
@@ -17,28 +20,14 @@ EXPLANATION OF ADMIN FEATURES:
 """
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(admin.ModelAdmin):
     """
     Custom User admin configuration
     """
-    list_display = ('email', 'name', 'contact_number', 'is_staff', 'is_active', 'date_joined')
-    list_filter = ('is_staff', 'is_active', 'date_joined')
-    search_fields = ('email', 'name')
-    ordering = ('email',)
-    
-    fieldsets = (
-        (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('name', 'description', 'contact_number')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Important dates', {'fields': ('last_login', 'date_joined')}),
-    )
-    
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('email', 'name', 'password1', 'password2'),
-        }),
-    )
+    list_display = ('name', 'email', 'bio', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('name', 'email')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(Store)
@@ -57,18 +46,22 @@ class ClotheAdmin(admin.ModelAdmin):
     """
     Clothe admin configuration
     """
-    list_display = ('name', 'type', 'get_owner', 'created_at')
-    list_filter = ('type', 'created_at')
-    search_fields = ('name', 'user__name', 'store__name')
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('name', 'type', 'vendor', 'base_price', 'user', 'store', 'shopify_id', 'created_at')
+    list_filter = ('type', 'vendor', 'created_at', 'store', 'user')
+    search_fields = ('name', 'vendor', 'gid')
+    readonly_fields = ('created_at', 'updated_at', 'price_range_display', 'available_sizes_display')
     
-    def get_owner(self, obj):
-        if obj.user:
-            return f"User: {obj.user.name}"
-        elif obj.store:
-            return f"Store: {obj.store.name}"
-        return "No owner"
-    get_owner.short_description = 'Owner'
+    def price_range_display(self, obj):
+        min_price, max_price = obj.get_price_range()
+        if min_price == max_price:
+            return f"${min_price:,.0f} CLP"
+        return f"${min_price:,.0f} - ${max_price:,.0f} CLP"
+    price_range_display.short_description = "Price Range"
+    
+    def available_sizes_display(self, obj):
+        sizes = obj.get_available_sizes()
+        return ", ".join(sizes) if sizes else "No sizes"
+    available_sizes_display.short_description = "Available Sizes"
 
 
 @admin.register(Outfit)
@@ -76,15 +69,10 @@ class OutfitAdmin(admin.ModelAdmin):
     """
     Outfit admin configuration
     """
-    list_display = ('name', 'user', 'rating', 'get_components_count', 'created_at')
-    list_filter = ('rating', 'created_at')
-    search_fields = ('name', 'user__name')
+    list_display = ('user', 'occasion', 'created_at')
+    list_filter = ('occasion', 'created_at')
+    search_fields = ('user__name', 'occasion')
     readonly_fields = ('created_at', 'updated_at')
-    filter_horizontal = ('components',)
-    
-    def get_components_count(self, obj):
-        return obj.components.count()
-    get_components_count.short_description = 'Components Count'
 
 
 @admin.register(Comment)
@@ -92,7 +80,130 @@ class CommentAdmin(admin.ModelAdmin):
     """
     Comment admin configuration
     """
-    list_display = ('title', 'user', 'outfit', 'created_at')
+    list_display = ('user', 'outfit', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('title', 'message', 'user__name', 'outfit__name')
+    search_fields = ('user__name', 'content')
     readonly_fields = ('created_at', 'updated_at')
+
+
+# Custom admin view for API Documentation
+class APIDocumentationAdmin:
+    def get_urls(self):
+        from django.urls import path
+        return [
+            path('api-docs/', self.api_documentation_view, name='api-docs'),
+        ]
+    
+    def api_documentation_view(self, request):
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>VisteT API Documentation</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .endpoint { background: #f5f5f5; padding: 15px; margin: 10px 0; border-left: 4px solid #007cba; }
+                .method { font-weight: bold; color: #007cba; }
+                .url { font-family: monospace; background: #e8e8e8; padding: 2px 5px; }
+                .description { margin: 8px 0; }
+                .example { background: #f0f0f0; padding: 10px; border-radius: 4px; font-family: monospace; }
+                h1 { color: #333; }
+                h2 { color: #007cba; border-bottom: 2px solid #007cba; padding-bottom: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>🎯 VisteT API Documentation</h1>
+            <p>Complete API reference for the VisteT clothing management system.</p>
+            
+            <h2>👕 Clothe Endpoints</h2>
+            
+            <div class="endpoint">
+                <div class="method">GET</div>
+                <div class="url">/api/clothe/all/</div>
+                <div class="description">Get all clothing items with pagination (20 items per page)</div>
+                <div class="example">curl http://localhost:8000/api/clothe/all/</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">POST</div>
+                <div class="url">/api/clothe/</div>
+                <div class="description">Create a new clothing item manually</div>
+                <div class="example">curl -X POST http://localhost:8000/api/clothe/ -H "Content-Type: application/json" -d '{"name": "Cool Shirt", "type": "SHIRT", "image": "http://example.com/image.jpg"}'</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">GET</div>
+                <div class="url">/api/clothe/{id}/</div>
+                <div class="description">Get specific clothing item by ID</div>
+                <div class="example">curl http://localhost:8000/api/clothe/1/</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">PUT</div>
+                <div class="url">/api/clothe/{id}/</div>
+                <div class="description">Update specific clothing item</div>
+                <div class="example">curl -X PUT http://localhost:8000/api/clothe/1/ -H "Content-Type: application/json" -d '{"name": "Updated Name"}'</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">DELETE</div>
+                <div class="url">/api/clothe/{id}/</div>
+                <div class="description">Delete specific clothing item</div>
+                <div class="example">curl -X DELETE http://localhost:8000/api/clothe/1/</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">POST</div>
+                <div class="url">/api/clothe/from-scraped/</div>
+                <div class="description">Create clothing item from scraped Shopify data</div>
+                <div class="example">curl -X POST http://localhost:8000/api/clothe/from-scraped/ -H "Content-Type: application/json" -d '{"id": 123, "gid": "gid://shopify/Product/123", "vendor": "Brand", "type": "Shorts", "title": "Product Name", "variants": [...]}'</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">POST</div>
+                <div class="url">/api/clothe/bulk-from-scraped/</div>
+                <div class="description">Bulk create clothing items from scraped data</div>
+                <div class="example">curl -X POST http://localhost:8000/api/clothe/bulk-from-scraped/ -H "Content-Type: application/json" -d '{"products": [...]}'</div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="method">GET</div>
+                <div class="url">/api/clothe/stats/</div>
+                <div class="description">Get database statistics (total items, by type, by vendor)</div>
+                <div class="example">curl http://localhost:8000/api/clothe/stats/</div>
+            </div>
+            
+            <h2>🔍 Query Parameters</h2>
+            <div class="endpoint">
+                <div class="description">Filter clothing items by type or vendor:</div>
+                <div class="example">GET /api/clothe/all/?type=SHORTS&vendor=REHAB</div>
+            </div>
+            
+            <h2>📊 Response Format</h2>
+            <div class="endpoint">
+                <div class="description">All clothing items include computed fields:</div>
+                <div class="example">{
+  "id": 1,
+  "name": "Jorts Ultra Baggy Black",
+  "type": "SHORTS",
+  "vendor": "REHAB CLO.",
+  "base_price": "37990.00",
+  "variants": [...],
+  "price_range": {"price": 37990.0},
+  "available_sizes": ["S/28US", "M/31US", "L/34US"]
+}</div>
+            </div>
+            
+            <h2>🕷️ Scraper Integration</h2>
+            <p>The spider automatically runs and saves data to these endpoints:</p>
+            <div class="endpoint">
+                <div class="description">Run scraper manually:</div>
+                <div class="example">cd vistet_backend/scraper/vistet_scraper && scrapy crawl details_spider</div>
+            </div>
+        </body>
+        </html>
+        """
+        return HttpResponse(html)
+
+# Add the API documentation to admin
+admin.site.register_view('api-docs/', 'API Documentation', APIDocumentationAdmin().api_documentation_view)
