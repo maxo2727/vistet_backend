@@ -1,0 +1,24 @@
+[flake8]
+max-line-length = 88
+exclude = 
+    migrations,
+    __pycache__,
+    manage.py,
+    settings.py,
+    venv,
+    .venv,
+    .git
+
+# Ignore specific errors to work well with black formatter
+ignore = E203,E501,W503,F401
+
+# Enable plugins
+enable-extensions = C90
+select = E,W,F,C,C901
+
+# Check for commented code (what you requested!)
+per-file-ignores =
+    __init__.py:F401
+
+# Custom rules
+max-complexity = 10 
