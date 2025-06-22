@@ -3,7 +3,7 @@ from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .models import Clothe
 from .serializers import ClotheSerializer, CreateClotheFromScrapedDataSerializer, BulkCreateClotheSerializer
 
@@ -161,3 +161,183 @@ def get_clothe_by_id(request, clothe_id):
     clothe = get_object_or_404(Clothe, id=clothe_id)
     serializer = ClotheSerializer(clothe)
     return Response(serializer.data)
+
+
+def api_documentation_view(request):
+    """
+    GET /api/docs/ - API Documentation page
+    """
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>VisteT API Documentation</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .endpoint { background: #f5f5f5; padding: 15px; margin: 10px 0; border-left: 4px solid #007cba; }
+            .method { font-weight: bold; color: #007cba; }
+            .url { font-family: monospace; background: #e8e8e8; padding: 2px 5px; }
+            .description { margin: 8px 0; }
+            .example { background: #f0f0f0; padding: 10px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; overflow-x: auto; }
+            h1 { color: #333; }
+            h2 { color: #007cba; border-bottom: 2px solid #007cba; padding-bottom: 5px; }
+        </style>
+    </head>
+    <body>
+        <h1>🎯 VisteT API Documentation</h1>
+        <p>Complete API reference for the VisteT clothing management system.</p>
+        
+        <h2>👕 Clothe Endpoints</h2>
+        
+        <div class="endpoint">
+            <div class="method">GET</div>
+            <div class="url">/api/clothe/all/</div>
+            <div class="description">Get all clothing items with pagination (20 items per page)</div>
+            <div class="example">curl http://localhost:8000/api/clothe/all/</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">POST</div>
+            <div class="url">/api/clothe/</div>
+            <div class="description">Create a new clothing item manually</div>
+            <div class="example">curl -X POST http://localhost:8000/api/clothe/ -H "Content-Type: application/json" -d '{"name": "Cool Shirt", "type": "SHIRT", "image": "http://example.com/image.jpg"}'</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">GET</div>
+            <div class="url">/api/clothe/{id}/</div>
+            <div class="description">Get specific clothing item by ID</div>
+            <div class="example">curl http://localhost:8000/api/clothe/1/</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">PUT</div>
+            <div class="url">/api/clothe/{id}/</div>
+            <div class="description">Update specific clothing item</div>
+            <div class="example">curl -X PUT http://localhost:8000/api/clothe/1/ -H "Content-Type: application/json" -d '{"name": "Updated Name"}'</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">DELETE</div>
+            <div class="url">/api/clothe/{id}/</div>
+            <div class="description">Delete specific clothing item</div>
+            <div class="example">curl -X DELETE http://localhost:8000/api/clothe/1/</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">POST</div>
+            <div class="url">/api/clothe/from-scraped/</div>
+            <div class="description">Create clothing item from scraped Shopify data</div>
+            <div class="example">curl -X POST http://localhost:8000/api/clothe/from-scraped/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 7731842056254,
+    "gid": "gid://shopify/Product/7731842056254",
+    "vendor": "REHAB CLO.",
+    "type": "Shorts",
+    "title": "Jorts Ultra Baggy Black",
+    "variants": [
+      {
+        "id": 41543583727678,
+        "price": 3799000,
+        "name": "Jorts Ultra Baggy Black - S/28US",
+        "public_title": "S/28US",
+        "sku": null
+      }
+    ],
+    "image_url": "https://example.com/image.jpg"
+  }'</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">POST</div>
+            <div class="url">/api/clothe/bulk-from-scraped/</div>
+            <div class="description">Bulk create clothing items from scraped data</div>
+            <div class="example">curl -X POST http://localhost:8000/api/clothe/bulk-from-scraped/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "products": [
+      {
+        "id": 7731842056254,
+        "gid": "gid://shopify/Product/7731842056254",
+        "vendor": "REHAB CLO.",
+        "type": "Shorts",
+        "title": "Jorts Ultra Baggy Black",
+        "variants": [
+          {
+            "id": 41543583727678,
+            "price": 3799000,
+            "name": "Jorts Ultra Baggy Black - S/28US",
+            "public_title": "S/28US",
+            "sku": null
+          }
+        ],
+        "image_url": "https://example.com/image.jpg"
+      }
+    ]
+  }'</div>
+        </div>
+        
+        <div class="endpoint">
+            <div class="method">GET</div>
+            <div class="url">/api/clothe/stats/</div>
+            <div class="description">Get database statistics (total items, by type, by vendor)</div>
+            <div class="example">curl http://localhost:8000/api/clothe/stats/</div>
+        </div>
+        
+        <h2>🔍 Query Parameters</h2>
+        <div class="endpoint">
+            <div class="description">Filter clothing items by type or vendor:</div>
+            <div class="example">GET /api/clothe/all/?type=SHORTS&vendor=REHAB</div>
+        </div>
+        
+        <h2>📊 Response Format</h2>
+        <div class="endpoint">
+            <div class="description">All clothing items include computed fields:</div>
+            <div class="example">{
+  "id": 1,
+  "name": "Jorts Ultra Baggy Black",
+  "type": "SHORTS",
+  "vendor": "REHAB CLO.",
+  "base_price": "37990.00",
+  "variants": [
+    {
+      "id": 41543583727678,
+      "price": 3799000,
+      "name": "Jorts Ultra Baggy Black - S/28US",
+      "public_title": "S/28US",
+      "sku": null
+    },
+    {
+      "id": 41543583760446,
+      "price": 3799000,
+      "name": "Jorts Ultra Baggy Black - M/31US",
+      "public_title": "M/31US",
+      "sku": null
+    }
+  ],
+  "price_range": {
+    "price": 37990.0
+  },
+  "available_sizes": [
+    "S/28US",
+    "M/31US",
+    "L/34US"
+  ],
+  "user": null,
+  "store": 1,
+  "created_at": "2025-06-21T23:38:22.979697Z",
+  "updated_at": "2025-06-22T00:00:04.984363Z"
+}</div>
+        </div>
+        
+        <h2>🕷️ Scraper Integration</h2>
+        <p>The spider automatically runs and saves data to these endpoints:</p>
+        <div class="endpoint">
+            <div class="description">Run scraper manually:</div>
+            <div class="example">cd vistet_backend/scraper/vistet_scraper && scrapy crawl details_spider</div>
+        </div>
+    </body>
+    </html>
+    """
+    return HttpResponse(html)

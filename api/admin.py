@@ -24,10 +24,10 @@ class UserAdmin(admin.ModelAdmin):
     """
     Custom User admin configuration
     """
-    list_display = ('name', 'email', 'bio', 'created_at')
-    list_filter = ('created_at',)
+    list_display = ('name', 'email', 'description', 'date_joined')
+    list_filter = ('date_joined', 'is_staff', 'is_active')
     search_fields = ('name', 'email')
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('date_joined', 'last_login')
 
 
 @admin.register(Store)
@@ -69,9 +69,9 @@ class OutfitAdmin(admin.ModelAdmin):
     """
     Outfit admin configuration
     """
-    list_display = ('user', 'occasion', 'created_at')
-    list_filter = ('occasion', 'created_at')
-    search_fields = ('user__name', 'occasion')
+    list_display = ('name', 'user', 'rating', 'created_at')
+    list_filter = ('rating', 'created_at')
+    search_fields = ('name', 'user__name')
     readonly_fields = ('created_at', 'updated_at')
 
 
@@ -205,5 +205,5 @@ class APIDocumentationAdmin:
         """
         return HttpResponse(html)
 
-# Add the API documentation to admin
-admin.site.register_view('api-docs/', 'API Documentation', APIDocumentationAdmin().api_documentation_view)
+# Note: To add custom admin views, you need to modify the main urls.py file
+# The APIDocumentationAdmin class above can be used in a custom admin view implementation

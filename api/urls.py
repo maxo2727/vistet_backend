@@ -4,6 +4,9 @@ from . import views
 app_name = 'api'
 
 urlpatterns = [
+    # Documentation
+    path('docs/', views.api_documentation_view, name='api-docs'),
+    
     # Class-based views (recommended)
     path('clothe/', views.ClotheListCreateView.as_view(), name='clothe-list-create'),
     path('clothe/<int:pk>/', views.ClotheDetailView.as_view(), name='clothe-detail'),
