@@ -10,6 +10,7 @@ class ClotheSerializer(serializers.ModelSerializer):
 
     price_range = serializers.SerializerMethodField()
     available_sizes = serializers.SerializerMethodField()
+    image_display_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Clothe
@@ -18,6 +19,8 @@ class ClotheSerializer(serializers.ModelSerializer):
             "name",
             "type",
             "image",
+            "image_url",
+            "image_display_url",
             "shopify_id",
             "gid",
             "vendor",
@@ -36,7 +39,51 @@ class ClotheSerializer(serializers.ModelSerializer):
             "updated_at",
             "price_range",
             "available_sizes",
+            "image_display_url",
         ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_representation(self, instance):
+        """
+        Remove image and image_url from GET responses, keep only image_display_url
+        """
+        data = super().to_representation(instance)
+        
+        # Keep only specific fields for GET responses
+        allowed_fields = ['name', 'type', 'image_display_url', 'user', 'store', 'id', 'created_at', 'updated_at']
+        filtered_data = {key: value for key, value in data.items() if key in allowed_fields}
+        
+        return filtered_data
+
+    def validate(self, data):
+        """
+        Simple validation: require either image or image_url
+        """
+        # Only validate for create operations or when image fields are being updated
+        if not self.instance or 'image' in data or 'image_url' in data:
+            image = data.get('image')
+            image_url = data.get('image_url')
+            
+            # For updates, check existing values if fields not provided
+            if self.instance:
+                existing_image = self.instance.image if not data.get('image') else None
+                existing_image_url = self.instance.image_url if not data.get('image_url') else None
+                image = image or existing_image
+                image_url = image_url or existing_image_url
+            
+            if not image and not image_url:
+                raise serializers.ValidationError(
+                    "Either 'image' file or 'image_url' must be provided."
+                )
+
+            if "type" in data and data["type"] not in [choice[0] for choice in Clothe.ClothingType.choices]:
+                raise serializers.ValidationError(
+                    f"Invalid type. Must be one of: {', '.join([choice[0] for choice in Clothe.ClothingType.choices])}"
+                )
+        
+        return data
 
     def get_price_range(self, obj):
         """Get price range from variants"""
@@ -51,6 +98,10 @@ class ClotheSerializer(serializers.ModelSerializer):
     def get_available_sizes(self, obj):
         """Get available sizes from variants"""
         return obj.get_available_sizes()
+
+    def get_image_display_url(self, obj):
+        """Get the appropriate image URL for display"""
+        return obj.get_image_url()
 
 
 class CreateClotheFromScrapedDataSerializer(serializers.Serializer):
@@ -100,7 +151,8 @@ class CreateClotheFromScrapedDataSerializer(serializers.Serializer):
         clothe_data = {
             "name": validated_data["title"],
             "type": type_mapping.get(validated_data["type"], Clothe.ClothingType.OTHER),
-            "image": validated_data.get("image_url", ""),
+            "image": None,  # Explicitly set to None for scraped data
+            "image_url": validated_data.get("image_url", ""),
             "shopify_id": validated_data["id"],
             "gid": validated_data["gid"],
             "vendor": validated_data["vendor"],

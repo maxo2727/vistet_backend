@@ -31,7 +31,17 @@ class Clothe(models.Model):
     type = models.CharField(
         max_length=20, choices=ClothingType.choices, default=ClothingType.OTHER
     )
-    image = models.URLField(help_text="URL to the clothing image")
+    image = models.ImageField(
+        upload_to='clothes/images/', 
+        null=True, 
+        blank=True,
+        help_text="Upload clothing image file"
+    )
+    image_url = models.URLField(
+        null=True, 
+        blank=True, 
+        help_text="External image URL (for scraped items)"
+    )
 
     # Scraped/external store data
     shopify_id = models.BigIntegerField(
@@ -118,3 +128,11 @@ class Clothe(models.Model):
             for variant in self.variants
             if variant.get("public_title")
         ]
+
+    def get_image_url(self):
+        """Get image URL - prioritize uploaded file over external URL"""
+        if self.image and hasattr(self.image, 'url'):
+            image_path = str(self.image)
+            if not image_path.startswith(('http://', 'https://')):
+                return self.image.url
+        return self.image_url
