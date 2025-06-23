@@ -11,18 +11,8 @@ class Clothe(models.Model):
 
     # Clothing type choices (enum-like behavior)
     class ClothingType(models.TextChoices):
-        SHIRT = "SHIRT", "Shirt"
-        PANTS = "PANTS", "Pants"
-        DRESS = "DRESS", "Dress"
-        SHOES = "SHOES", "Shoes"
-        JACKET = "JACKET", "Jacket"
-        SWEATER = "SWEATER", "Sweater"
         SHORTS = "SHORTS", "Shorts"
-        SKIRT = "SKIRT", "Skirt"
-        BLOUSE = "BLOUSE", "Blouse"
-        HOODIE = "HOODIE", "Hoodie"
-        COAT = "COAT", "Coat"
-        JEANS = "JEANS", "Jeans"
+        PANTS = "PANTS", "Pants"
         ACCESSORIES = "ACCESSORIES", "Accessories"
         POLERA = "POLERA", "Polera"
         OTHER = "OTHER", "Other"

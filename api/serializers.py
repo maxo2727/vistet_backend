@@ -269,6 +269,70 @@ class OutfitSerializer(serializers.ModelSerializer):
             "components_count",
         ]
 
+    def validate(self, data):
+        """
+        Validate that user cannot create multiple outfits with the same name
+        """
+        # Only check for duplicates during creation (not updates)
+        if not self.instance:
+            user = data.get('user')
+            name = data.get('name')
+            
+            if user and name:
+                existing_outfit = Outfit.objects.filter(user=user, name=name).first()
+                if existing_outfit:
+                    raise serializers.ValidationError(
+                        f"You already have an outfit named '{name}'. Please choose a different name."
+                    )
+        
+        return data
+
+    def validate_components(self, value):
+        """
+        Validate that components contain required clothing types: PANTS/SHORTS, ACCESSORIES, POLERA
+        """
+        # Handle both cases: list of integers or list of Clothe objects
+        if value and hasattr(value[0], 'id'):
+            # value contains Clothe objects
+            clothes = value
+            clothing_ids = [clothe.id for clothe in clothes]
+        else:
+            # value contains integers
+            clothing_ids = value
+            clothes = Clothe.objects.filter(id__in=clothing_ids)
+            
+            # Check if all IDs exist
+            if len(clothes) != len(clothing_ids):
+                missing_ids = set(clothing_ids) - set(clothes.values_list('id', flat=True))
+                raise serializers.ValidationError(
+                    f"Clothing items with IDs {list(missing_ids)} do not exist."
+                )
+        
+        # Get the types of the selected clothes
+        present_types = set(clothe.type for clothe in clothes)
+        
+        # Required types for a complete outfit (PANTS OR SHORTS + ACCESSORIES + POLERA)
+        has_bottom = (Clothe.ClothingType.PANTS in present_types or 
+                     Clothe.ClothingType.SHORTS in present_types)
+        has_accessories = Clothe.ClothingType.ACCESSORIES in present_types
+        has_polera = Clothe.ClothingType.POLERA in present_types
+        
+        missing_types = []
+        if not has_bottom:
+            missing_types.append("Pants or Shorts")
+        if not has_accessories:
+            missing_types.append("Accessories")
+        if not has_polera:
+            missing_types.append("Polera")
+        
+        if missing_types:
+            raise serializers.ValidationError(
+                f"Outfit must include at least one item of each type: Pants/Shorts, Accessories, Polera. "
+                f"Missing: {', '.join(missing_types)}"
+            )
+        
+        return value
+
     def get_components_count(self, obj):
         """Get the number of clothing items in this outfit"""
         return obj.components.count()

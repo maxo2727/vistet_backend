@@ -184,7 +184,7 @@ class DetailsSpider(scrapy.Spider):
                     saved_count += 1
                     result = response.json()
                     print(
-                        f"✅ Saved: {result.get('name', 'Unknown')} (ID: {result.get('id', 'Unknown')})"
+                        f"✅ Saved: {result.get('name', 'Unknown')} (TYPE: {result.get('type', 'Unknown')})"
                     )
                 else:
                     print(
