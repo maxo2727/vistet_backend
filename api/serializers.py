@@ -67,7 +67,7 @@ class CreateClotheFromScrapedDataSerializer(serializers.Serializer):
         child=serializers.DictField(), help_text="Product variants array"
     )
     image_url = serializers.URLField(
-        required=False, allow_blank=True, help_text="Product image URL"
+        required=False, allow_blank=True, allow_null=True, help_text="Product image URL"
     )
 
     def create(self, validated_data):
