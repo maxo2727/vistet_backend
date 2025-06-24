@@ -1,7 +1,13 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
+from django.core.exceptions import ValidationError
+import re
 
+def validate_phone_number(value):
+    pattern = r"^(?:\+56\s9\s\d{4}\s\d{4}|\+569\d{8})$"
+    if not re.match(pattern, value):
+        raise ValidationError("Invalid phone number. Must be in format: +56 9 XXXX XXXX or +569XXXXXXXX")
 
 class UserManager(BaseUserManager):
     """
@@ -43,18 +49,8 @@ class User(AbstractUser):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
 
-    # Phone number validation for Chilean format +56 9 [8 numbers]
-    phone_regex = RegexValidator(
-        regex=r"^\+56\s9\s\d{4}\s\d{4}$",
-        message="Phone number must be in format: +56 9 XXXX XXXX",
-    )
-
-    phone_regex_no_spaces = RegexValidator(
-        regex=r"^\+569\d{8}$", message="Phone number must be in format: +569XXXXXXXX"
-    )
-
     contact_number = models.CharField(
-        validators=[phone_regex, phone_regex_no_spaces],
+        validators=[validate_phone_number],
         max_length=17,
         blank=True,
         null=True,
